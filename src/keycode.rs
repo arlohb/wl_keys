@@ -39,6 +39,8 @@ pub fn str_to_key(key: &str) -> u32 {
         "9" => k::KEY_9!(),
         "0" => k::KEY_0!(),
         "ENTER" => k::KEY_ENTER!(),
+        "BACKSPACE" => k::KEY_BACKSPACE!(),
+        "SPACE" => k::KEY_SPACE!(),
         _ => panic!("Unrecognised key"),
     }
 }

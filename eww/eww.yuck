@@ -1,0 +1,53 @@
+(defwidget key [c ?width ?halign]
+  (button
+   :class "key"
+   :onclick "/home/arlo/code/wl_keys/target/debug/wl_keys key ${c?.[1] ?: c[0]}"
+   :width { width ?: 100}
+   :halign { halign ?: "fill" }
+   (label :text { c[0] })))
+
+(defwindow keyboard
+  :exclusive false
+  :focusable false
+  :stacking "fg"
+
+  :monitor 0
+
+  :geometry (geometry
+    :width "60%"
+    :height "45%"
+    :y "40px"
+    :anchor "bottom center")
+
+  (box
+   :class "keyboard"
+   :space-evenly true
+   :spacing 8
+   :orientation "v"
+   (box
+    :orientation "h"
+    :space-evenly true
+    :spacing 8
+    (for c in '[["q"], ["w"], ["e"], ["r"], ["t"], ["y"], ["u"], ["i"], ["o"], ["p"]]'
+      (key :c c)))
+   (box
+    :class "row2"
+    :orientation "h"
+    :space-evenly true
+    :spacing 6
+    (for c in '[["a"], ["s"], ["d"], ["f"], ["g"], ["h"], ["j"], ["k"], ["l"]]'
+      (key :c c)))
+   (box
+    :orientation "h"
+    :space-evenly true
+    :spacing 6
+    (for c in '[["󰘶"], ["z"], ["x"], ["c"], ["v"], ["b"], ["n"], ["m"], ["󰭜", "BACKSPACE"]]'
+      (key :c c)))
+   (box
+    :orientation "h"
+    :space-evenly false
+    :spacing 6
+    (key :width 200 :c '["󰘳", "SPACE"]')
+    (key :width 750 :c '["󱁐", "SPACE"]')
+    (key :width 200 :c '["󰌑", "ENTER"]'))))
+
