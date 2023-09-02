@@ -1,12 +1,14 @@
 use std::{
+    collections::HashMap,
     io::{Seek, SeekFrom, Write},
     os::fd::IntoRawFd,
 };
 
+use anyhow::{bail, Context};
 use wayland_client::{
     delegate_noop,
     protocol::{wl_registry, wl_seat::WlSeat},
-    Connection, Dispatch, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use wayland_protocols_misc::zwp_virtual_keyboard_v1::client::{
     zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1,
@@ -15,7 +17,37 @@ use wayland_protocols_misc::zwp_virtual_keyboard_v1::client::{
 
 mod keymap;
 
-struct App;
+#[derive(Default)]
+struct App {
+    globals: HashMap<String, (u32, u32)>,
+}
+
+impl App {
+    fn bind_global<T: Proxy + 'static>(
+        &self,
+        registry: &wl_registry::WlRegistry,
+        qh: &QueueHandle<Self>,
+    ) -> anyhow::Result<T>
+    where
+        App: Dispatch<T, ()>,
+    {
+        let interface = T::interface();
+        let &(id, version) = self
+            .globals
+            .get(interface.name)
+            .context(format!("{interface} not found"))?;
+
+        if interface.version < version {
+            bail!(
+                "{} v{version} exceeds the max supported version (v{})",
+                interface.name,
+                interface.version
+            );
+        }
+
+        Ok(registry.bind::<T, _, _>(id, version, qh, ()))
+    }
+}
 
 delegate_noop!(App: ignore WlSeat);
 delegate_noop!(App: ignore ZwpVirtualKeyboardManagerV1);
@@ -23,7 +55,7 @@ delegate_noop!(App: ignore ZwpVirtualKeyboardV1);
 
 impl Dispatch<wl_registry::WlRegistry, ()> for App {
     fn event(
-        _state: &mut Self,
+        app: &mut Self,
         _registry: &wl_registry::WlRegistry,
         event: wl_registry::Event,
         _user_state: &(),
@@ -36,7 +68,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for App {
             version,
         } = event
         {
-            println!("[{}] {} (v{})", name, interface, version);
+            app.globals.insert(interface, (name, version));
         }
     }
 }
@@ -49,6 +81,7 @@ fn millis() -> u128 {
 }
 
 fn main() -> anyhow::Result<()> {
+    let mut app = App::default();
     let conn = Connection::connect_to_env()?;
     let display = conn.display();
 
@@ -57,10 +90,10 @@ fn main() -> anyhow::Result<()> {
 
     let registry = display.get_registry(&qh, ());
 
-    event_queue.roundtrip(&mut App)?;
+    event_queue.roundtrip(&mut app)?;
 
-    let seat = registry.bind::<WlSeat, _, _>(14, 8, &qh, ());
-    let keyboard_manager = registry.bind::<ZwpVirtualKeyboardManagerV1, _, _>(27, 1, &qh, ());
+    let seat = app.bind_global::<WlSeat>(&registry, &qh)?;
+    let keyboard_manager = app.bind_global::<ZwpVirtualKeyboardManagerV1>(&registry, &qh)?;
     let keyboard = keyboard_manager.create_virtual_keyboard(&seat, &qh, ());
 
     let src = keymap::KEYMAP;
