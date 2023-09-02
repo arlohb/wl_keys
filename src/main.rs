@@ -78,9 +78,10 @@ fn main() -> anyhow::Result<()> {
     for _ in 0..5 {
         std::thread::sleep(std::time::Duration::from_millis(1000));
         keyboard.key(millis() as u32, input_event_codes::KEY_W!(), 1);
-        std::thread::sleep(std::time::Duration::from_millis(1000));
+        event_queue.flush()?;
+        std::thread::sleep(std::time::Duration::from_millis(10));
         keyboard.key(millis() as u32, input_event_codes::KEY_W!(), 0);
-        event_queue.roundtrip(&mut App)?;
+        event_queue.flush()?;
     }
 
     Ok(())
