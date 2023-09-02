@@ -1,16 +1,20 @@
 mod keyboard;
+mod keycode;
 mod keymap;
 
+use anyhow::Context;
+use keycode::str_to_key;
+
 fn main() -> anyhow::Result<()> {
+    let key_str = std::env::args().nth(1).context("Need a key argument")?;
+    let key = str_to_key(&key_str);
+
     let keyboard = keyboard::Keyboard::new()?;
 
-    for _ in 0..5 {
-        std::thread::sleep(std::time::Duration::from_millis(1000));
-        keyboard.key(input_event_codes::KEY_W!(), true)?;
+    keyboard.key(key, true)?;
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        keyboard.key(input_event_codes::KEY_W!(), false)?;
-    }
+    std::thread::sleep(std::time::Duration::from_millis(10));
+    keyboard.key(key, false)?;
 
     Ok(())
 }
