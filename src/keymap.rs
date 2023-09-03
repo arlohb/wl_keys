@@ -1,3 +1,4 @@
+/// The raw xkb keymap
 pub const KEYMAP: &str = "xkb_keymap {\
 xkb_keycodes \"(unnamed)\" {\
         minimum = 8;\

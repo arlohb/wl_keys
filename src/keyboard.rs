@@ -35,7 +35,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for State {
         event: wl_registry::Event,
         _user_state: &(),
         _conn: &Connection,
-        _qh: &QueueHandle<State>,
+        _qh: &QueueHandle<Self>,
     ) {
         if let wl_registry::Event::Global {
             name,
@@ -52,10 +52,10 @@ impl State {
     pub fn bind_global<T: Proxy + 'static>(
         &self,
         registry: &wl_registry::WlRegistry,
-        qh: &QueueHandle<State>,
+        qh: &QueueHandle<Self>,
     ) -> Result<T>
     where
-        State: Dispatch<T, ()>,
+        Self: Dispatch<T, ()>,
     {
         let interface = T::interface();
         let &(id, version) = self
@@ -75,6 +75,7 @@ impl State {
     }
 }
 
+/// The virtual keyboard
 pub struct Keyboard {
     _state: State,
 
@@ -90,7 +91,8 @@ pub struct Keyboard {
 }
 
 impl Keyboard {
-    pub fn new() -> Result<Keyboard> {
+    /// Creates the virtual keyboard
+    pub fn new() -> Result<Self> {
         let conn = Connection::connect_to_env()?;
         let display = conn.display();
         let mut event_queue = conn.new_event_queue();
@@ -118,7 +120,7 @@ impl Keyboard {
         keyboard.keymap(1, fd, size as u32);
         event_queue.flush()?;
 
-        Ok(Keyboard {
+        Ok(Self {
             _state: state,
 
             _conn: conn,
@@ -133,16 +135,16 @@ impl Keyboard {
         })
     }
 
-    fn time(&self) -> u32 {
+    fn time() -> u32 {
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .expect("Time went backwards")
+            .unwrap_or(std::time::Duration::from_millis(0))
             .as_millis() as u32
     }
 
+    /// Set the state of a key
     pub fn key(&self, key: u32, pressed: bool) -> Result<()> {
-        self.keyboard
-            .key(self.time(), key, if pressed { 1 } else { 0 });
+        self.keyboard.key(Self::time(), key, pressed.into());
         self.event_queue.flush()?;
         Ok(())
     }

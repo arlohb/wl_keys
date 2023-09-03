@@ -1,7 +1,9 @@
+use anyhow::{bail, Result};
 use input_event_codes as k;
 
-pub fn str_to_key(key: &str) -> u32 {
-    match key {
+/// Convert the key string to the xkb code
+pub fn str_to_key(key: &str) -> Result<u32> {
+    Ok(match key {
         "a" => k::KEY_A!(),
         "b" => k::KEY_B!(),
         "c" => k::KEY_C!(),
@@ -43,6 +45,6 @@ pub fn str_to_key(key: &str) -> u32 {
         "ENTER" => k::KEY_ENTER!(),
         "BACKSPACE" => k::KEY_BACKSPACE!(),
         "SPACE" => k::KEY_SPACE!(),
-        _ => panic!("Unrecognised key"),
-    }
+        _ => bail!("Unrecognised key"),
+    })
 }

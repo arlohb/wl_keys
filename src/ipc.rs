@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 
 use crate::{keyboard::Keyboard, keycode::str_to_key};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 enum Msg {
     Key(u32),
     Stop,
@@ -13,6 +13,7 @@ enum Msg {
 const IPC_DIR: &str = "/tmp/wl_keys";
 const IPC_PATH: &str = "/tmp/wl_keys/socket.sock";
 
+/// Starts the daemon and listens for msgs
 pub fn daemon() -> Result<()> {
     let keyboard = Keyboard::new()?;
 
@@ -53,13 +54,15 @@ fn send_msg(msg: Msg) -> Result<()> {
     Ok(())
 }
 
-pub fn send_key(key_str: String) -> Result<()> {
-    let key = str_to_key(&key_str);
+/// Send a key press of a key string to the daemon
+pub fn send_key(key_str: &str) -> Result<()> {
+    let key = str_to_key(key_str)?;
     send_msg(Msg::Key(key))?;
 
     Ok(())
 }
 
+/// Send the stop msg to the daemon
 pub fn send_stop() -> Result<()> {
     send_msg(Msg::Stop)?;
 
