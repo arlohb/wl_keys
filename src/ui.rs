@@ -19,3 +19,13 @@ pub fn close() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+pub fn toggle() -> anyhow::Result<()> {
+    Command::new("eww")
+        .args(["--config", "eww/", "open", "--toggle", "keyboard"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    Ok(())
+}
