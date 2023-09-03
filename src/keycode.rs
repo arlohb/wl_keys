@@ -38,6 +38,8 @@ pub fn str_to_key(key: &str) -> u32 {
         "8" => k::KEY_8!(),
         "9" => k::KEY_9!(),
         "0" => k::KEY_0!(),
+        "," => k::KEY_COMMA!(),
+        "." => k::KEY_DOT!(),
         "ENTER" => k::KEY_ENTER!(),
         "BACKSPACE" => k::KEY_BACKSPACE!(),
         "SPACE" => k::KEY_SPACE!(),
