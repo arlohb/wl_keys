@@ -1,6 +1,7 @@
+use anyhow::Result;
 use std::process::{Command, Stdio};
 
-pub fn open() -> anyhow::Result<()> {
+pub fn open() -> Result<()> {
     Command::new("eww")
         .args(["--config", "eww/", "open", "keyboard"])
         .stdout(Stdio::null())
@@ -10,7 +11,7 @@ pub fn open() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn close() -> anyhow::Result<()> {
+pub fn close() -> Result<()> {
     Command::new("eww")
         .args(["--config", "eww/", "close", "keyboard"])
         .stdout(Stdio::null())
@@ -20,7 +21,7 @@ pub fn close() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn toggle() -> anyhow::Result<()> {
+pub fn toggle() -> Result<()> {
     Command::new("eww")
         .args(["--config", "eww/", "open", "--toggle", "keyboard"])
         .stdout(Stdio::null())

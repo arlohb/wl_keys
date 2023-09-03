@@ -4,7 +4,7 @@ use std::{
     os::fd::IntoRawFd,
 };
 
-use anyhow::{bail, Context};
+use anyhow::{bail, Context, Result};
 use wayland_client::{
     delegate_noop,
     protocol::{
@@ -53,7 +53,7 @@ impl State {
         &self,
         registry: &wl_registry::WlRegistry,
         qh: &QueueHandle<State>,
-    ) -> anyhow::Result<T>
+    ) -> Result<T>
     where
         State: Dispatch<T, ()>,
     {
@@ -90,7 +90,7 @@ pub struct Keyboard {
 }
 
 impl Keyboard {
-    pub fn new() -> anyhow::Result<Keyboard> {
+    pub fn new() -> Result<Keyboard> {
         let conn = Connection::connect_to_env()?;
         let display = conn.display();
         let mut event_queue = conn.new_event_queue();
@@ -140,7 +140,7 @@ impl Keyboard {
             .as_millis() as u32
     }
 
-    pub fn key(&self, key: u32, pressed: bool) -> anyhow::Result<()> {
+    pub fn key(&self, key: u32, pressed: bool) -> Result<()> {
         self.keyboard
             .key(self.time(), key, if pressed { 1 } else { 0 });
         self.event_queue.flush()?;

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde_derive::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
@@ -6,14 +7,16 @@ use crate::{keyboard::Keyboard, keycode::str_to_key};
 #[derive(Serialize, Deserialize)]
 enum Msg {
     Key(u32),
+    Stop,
 }
 
 const IPC_DIR: &str = "/tmp/wl_keys";
 const IPC_PATH: &str = "/tmp/wl_keys/socket.sock";
 
-pub fn daemon() -> anyhow::Result<()> {
+pub fn daemon() -> Result<()> {
     let keyboard = Keyboard::new()?;
 
+    let _ = send_stop();
     std::fs::create_dir_all(IPC_DIR)?;
     let _ = std::fs::remove_file(IPC_PATH);
     let socket = std::os::unix::net::UnixListener::bind(IPC_PATH)?;
@@ -32,20 +35,33 @@ pub fn daemon() -> anyhow::Result<()> {
                 std::thread::sleep(std::time::Duration::from_millis(10));
                 keyboard.key(key, false)?;
             }
+            Msg::Stop => {
+                return Ok(());
+            }
         };
     }
 
     Ok(())
 }
 
-pub fn client(key_str: String) -> anyhow::Result<()> {
+fn send_msg(msg: Msg) -> Result<()> {
     let mut socket = std::os::unix::net::UnixStream::connect(IPC_PATH)?;
-
-    let key = str_to_key(&key_str);
-    let msg = Msg::Key(key);
 
     let data = serde_json::to_vec(&msg)?;
     socket.write_all(&data)?;
+
+    Ok(())
+}
+
+pub fn send_key(key_str: String) -> Result<()> {
+    let key = str_to_key(&key_str);
+    send_msg(Msg::Key(key))?;
+
+    Ok(())
+}
+
+pub fn send_stop() -> Result<()> {
+    send_msg(Msg::Stop)?;
 
     Ok(())
 }
