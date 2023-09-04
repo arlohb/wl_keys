@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
-    io::{Seek, SeekFrom, Write},
-    os::fd::IntoRawFd,
+    os::fd::{IntoRawFd, OwnedFd},
 };
 
 use anyhow::{bail, Context, Result};
@@ -9,6 +8,7 @@ use wayland_client::{
     delegate_noop,
     protocol::{
         wl_display::WlDisplay,
+        wl_keyboard::{self, WlKeyboard},
         wl_registry::{self, WlRegistry},
         wl_seat::WlSeat,
     },
@@ -19,19 +19,45 @@ use wayland_protocols_misc::zwp_virtual_keyboard_v1::client::{
     zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1,
 };
 
+struct Keymap {
+    fd: OwnedFd,
+    size: u32,
+}
+
 #[derive(Default)]
 struct State {
     globals: HashMap<String, (u32, u32)>,
+    keymap: Option<Keymap>,
 }
 
 delegate_noop!(State: ignore WlSeat);
 delegate_noop!(State: ignore ZwpVirtualKeyboardManagerV1);
 delegate_noop!(State: ignore ZwpVirtualKeyboardV1);
 
-impl Dispatch<wl_registry::WlRegistry, ()> for State {
+impl Dispatch<WlKeyboard, ()> for State {
     fn event(
         state: &mut Self,
-        _registry: &wl_registry::WlRegistry,
+        _keyboard: &WlKeyboard,
+        event: wl_keyboard::Event,
+        _user_state: &(),
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+        match event {
+            wl_keyboard::Event::Keymap { format, fd, size }
+                if format == wayland_client::WEnum::Value(wl_keyboard::KeymapFormat::XkbV1) =>
+            {
+                state.keymap = Some(Keymap { fd, size });
+            }
+            _ => (),
+        };
+    }
+}
+
+impl Dispatch<WlRegistry, ()> for State {
+    fn event(
+        state: &mut Self,
+        _registry: &WlRegistry,
         event: wl_registry::Event,
         _user_state: &(),
         _conn: &Connection,
@@ -104,20 +130,20 @@ impl Keyboard {
         event_queue.roundtrip(&mut state)?;
 
         let seat = state.bind_global::<WlSeat>(&registry, &qh)?;
+        // So the events are caught
+        seat.get_keyboard(&qh, ());
+
+        event_queue.roundtrip(&mut state)?;
+
         let keyboard_manager = state.bind_global::<ZwpVirtualKeyboardManagerV1>(&registry, &qh)?;
         let keyboard = keyboard_manager.create_virtual_keyboard(&seat, &qh, ());
 
-        let src = crate::keymap::KEYMAP;
-        let size = src.len();
-        let mut file = tempfile::tempfile()?;
-        file.seek(SeekFrom::Start(size as u64))?;
-        file.write_all(&[0])?;
-        file.seek(SeekFrom::Start(0))?;
-        let mut data = unsafe { memmap2::MmapOptions::new().map_mut(&file)? };
-        data[..src.len()].copy_from_slice(src.as_bytes());
-        let fd = file.into_raw_fd();
+        if let Some(Keymap { fd, size }) = state.keymap.take() {
+            keyboard.keymap(1, fd.into_raw_fd(), size);
+        } else {
+            bail!("Keymap not found");
+        }
 
-        keyboard.keymap(1, fd, size as u32);
         event_queue.flush()?;
 
         Ok(Self {

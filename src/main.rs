@@ -24,9 +24,6 @@ pub mod ipc;
 pub mod keyboard;
 /// Converts the key string to the xkb code
 pub mod keycode;
-/// The raw xkb keymap
-/// I do not understand this file
-pub mod keymap;
 /// Manages the eww UI
 pub mod ui;
 
