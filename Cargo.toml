@@ -14,5 +14,6 @@ serde_derive = "1.0"
 serde_json = "1.0"
 tempfile = "3.8"
 wayland-client = "0.30"
+wayland-protocols = { version = "0.30", features = [ "client", "unstable" ] }
 wayland-protocols-misc = { version = "0.1", features = [ "client" ] }
 

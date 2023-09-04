@@ -14,11 +14,19 @@ use wayland_client::{
     },
     Connection, Dispatch, EventQueue, Proxy, QueueHandle,
 };
-use wayland_protocols_misc::zwp_virtual_keyboard_v1::client::{
-    zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1,
-    zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1,
+use wayland_protocols_misc::{
+    zwp_input_method_v2::client::{
+        zwp_input_method_manager_v2::ZwpInputMethodManagerV2,
+        zwp_input_method_v2::{self, ZwpInputMethodV2},
+    },
+    zwp_virtual_keyboard_v1::client::{
+        zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1,
+        zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1,
+    },
 };
 
+/// This is taken from the real `WlKeyboard`,
+/// and passed as the keymap for my virtual keyboard.
 struct Keymap {
     fd: OwnedFd,
     size: u32,
@@ -33,6 +41,26 @@ struct State {
 delegate_noop!(State: ignore WlSeat);
 delegate_noop!(State: ignore ZwpVirtualKeyboardManagerV1);
 delegate_noop!(State: ignore ZwpVirtualKeyboardV1);
+delegate_noop!(State: ignore ZwpInputMethodManagerV2);
+
+impl Dispatch<ZwpInputMethodV2, ()> for State {
+    fn event(
+        _state: &mut Self,
+        _zwp_input_method: &ZwpInputMethodV2,
+        event: zwp_input_method_v2::Event,
+        _user_state: &(),
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+        use zwp_input_method_v2::Event;
+
+        let _ = match event {
+            Event::Activate => crate::ui::open(),
+            Event::Deactivate => crate::ui::close(),
+            _ => Ok(()),
+        };
+    }
+}
 
 impl Dispatch<WlKeyboard, ()> for State {
     fn event(
@@ -103,7 +131,7 @@ impl State {
 
 /// The virtual keyboard
 pub struct Keyboard {
-    _state: State,
+    state: State,
 
     _conn: Connection,
     _display: WlDisplay,
@@ -119,35 +147,45 @@ pub struct Keyboard {
 impl Keyboard {
     /// Creates the virtual keyboard
     pub fn new() -> Result<Self> {
+        let mut state = State::default();
+
         let conn = Connection::connect_to_env()?;
         let display = conn.display();
         let mut event_queue = conn.new_event_queue();
         let qh = event_queue.handle();
+
+        // Get the globals from the registry
         let registry = display.get_registry(&qh, ());
-
-        let mut state = State::default();
-
         event_queue.roundtrip(&mut state)?;
 
         let seat = state.bind_global::<WlSeat>(&registry, &qh)?;
-        // So the events are caught
+        // Take the keyboard
         seat.get_keyboard(&qh, ());
-
         event_queue.roundtrip(&mut state)?;
 
+        // zwp_input_method_v2 is used for clients to become their own input method,
+        // that manages text instead of just keypresses like the virtual keyboard.
+        // I'm not using it to input the text, only for when to show and hide the keyboard.
+        // This article was a great explainer for this
+        // https://dorotac.eu/posts/input_method/
+        let input_method_manager = state.bind_global::<ZwpInputMethodManagerV2>(&registry, &qh)?;
+        input_method_manager.get_input_method(&seat, &qh, ());
+
+        // Create the virtual keyboard
         let keyboard_manager = state.bind_global::<ZwpVirtualKeyboardManagerV1>(&registry, &qh)?;
         let keyboard = keyboard_manager.create_virtual_keyboard(&seat, &qh, ());
 
+        // Set the keymap for the virtual keyboard
         if let Some(Keymap { fd, size }) = state.keymap.take() {
             keyboard.keymap(1, fd.into_raw_fd(), size);
         } else {
             bail!("Keymap not found");
         }
 
-        event_queue.flush()?;
+        event_queue.roundtrip(&mut state)?;
 
         Ok(Self {
-            _state: state,
+            state,
 
             _conn: conn,
             _display: display,
@@ -172,6 +210,12 @@ impl Keyboard {
     pub fn key(&self, key: u32, pressed: bool) -> Result<()> {
         self.keyboard.key(Self::time(), key, pressed.into());
         self.event_queue.flush()?;
+        Ok(())
+    }
+
+    /// Blocks until all events are sent and processed
+    pub fn roundtrip(&mut self) -> Result<()> {
+        self.event_queue.roundtrip(&mut self.state)?;
         Ok(())
     }
 }

@@ -15,34 +15,36 @@ const IPC_PATH: &str = "/tmp/wl_keys/socket.sock";
 
 /// Starts the daemon and listens for msgs
 pub fn daemon() -> Result<()> {
-    let keyboard = Keyboard::new()?;
+    let mut keyboard = Keyboard::new()?;
 
     let _ = send_stop();
     std::fs::create_dir_all(IPC_DIR)?;
     let _ = std::fs::remove_file(IPC_PATH);
     let socket = std::os::unix::net::UnixListener::bind(IPC_PATH)?;
+    socket.set_nonblocking(true)?;
 
-    for stream in socket.incoming() {
-        let mut stream = stream?;
+    loop {
+        if let Ok((mut stream, _)) = socket.accept() {
+            let mut data = String::new();
+            stream.read_to_string(&mut data)?;
 
-        let mut data = String::new();
-        stream.read_to_string(&mut data)?;
+            let msg = serde_json::from_str::<Msg>(&data)?;
 
-        let msg = serde_json::from_str::<Msg>(&data)?;
+            match msg {
+                Msg::Key(key) => {
+                    keyboard.key(key, true)?;
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    keyboard.key(key, false)?;
+                }
+                Msg::Stop => {
+                    return Ok(());
+                }
+            };
+        }
 
-        match msg {
-            Msg::Key(key) => {
-                keyboard.key(key, true)?;
-                std::thread::sleep(std::time::Duration::from_millis(10));
-                keyboard.key(key, false)?;
-            }
-            Msg::Stop => {
-                return Ok(());
-            }
-        };
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        keyboard.roundtrip()?;
     }
-
-    Ok(())
 }
 
 fn send_msg(msg: Msg) -> Result<()> {
