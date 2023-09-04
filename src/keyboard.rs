@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    os::fd::{IntoRawFd, OwnedFd},
+    os::fd::{AsFd, OwnedFd},
 };
 
 use anyhow::{bail, Context, Result};
@@ -177,7 +177,7 @@ impl Keyboard {
 
         // Set the keymap for the virtual keyboard
         if let Some(Keymap { fd, size }) = state.keymap.take() {
-            keyboard.keymap(1, fd.into_raw_fd(), size);
+            keyboard.keymap(1, fd.as_fd(), size);
         } else {
             bail!("Keymap not found");
         }
