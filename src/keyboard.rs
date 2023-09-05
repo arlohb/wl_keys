@@ -36,6 +36,8 @@ struct Keymap {
 struct State {
     globals: HashMap<String, (u32, u32)>,
     keymap: Option<Keymap>,
+    // Whether it will automatically open and close
+    auto: bool,
 }
 
 delegate_noop!(State: ignore WlSeat);
@@ -45,7 +47,7 @@ delegate_noop!(State: ignore ZwpInputMethodManagerV2);
 
 impl Dispatch<ZwpInputMethodV2, ()> for State {
     fn event(
-        _state: &mut Self,
+        state: &mut Self,
         _zwp_input_method: &ZwpInputMethodV2,
         event: zwp_input_method_v2::Event,
         _user_state: &(),
@@ -53,6 +55,10 @@ impl Dispatch<ZwpInputMethodV2, ()> for State {
         _qh: &QueueHandle<Self>,
     ) {
         use zwp_input_method_v2::Event;
+
+        if !state.auto {
+            return;
+        }
 
         let _ = match event {
             Event::Activate => crate::ui::open(),
@@ -217,5 +223,20 @@ impl Keyboard {
     pub fn roundtrip(&mut self) -> Result<()> {
         self.event_queue.roundtrip(&mut self.state)?;
         Ok(())
+    }
+
+    /// Enable input detection
+    pub fn auto_enable(&mut self) {
+        self.state.auto = true;
+    }
+
+    /// Disable input detection
+    pub fn auto_disable(&mut self) {
+        self.state.auto = false;
+    }
+
+    /// Toggle input detection
+    pub fn auto_toggle(&mut self) {
+        self.state.auto = !self.state.auto;
     }
 }
