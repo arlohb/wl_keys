@@ -1,0 +1,22 @@
+syntax = "proto3";
+package wl_keys;
+
+import "google/protobuf/empty.proto";
+
+service Daemon {
+    rpc SendKey (Key) returns (google.protobuf.Empty);
+    rpc AutoEnable (google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc AutoDisable (google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc AutoToggle (google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc AutoQuery (google.protobuf.Empty) returns (AutoStatus);
+    rpc Stop (google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+message Key {
+    uint32 key = 1;
+}
+
+message AutoStatus {
+    bool enabled = 1;
+}
+

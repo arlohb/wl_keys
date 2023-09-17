@@ -17,6 +17,10 @@
 #![allow(clippy::cast_sign_loss)]
 // Too many errors possible to list all of them
 #![allow(clippy::missing_errors_doc)]
+// I only do this on purpose
+#![allow(clippy::module_name_repetitions)]
+// I think this lint is falsely triggering
+#![allow(clippy::significant_drop_tightening)]
 
 /// Values like the socket file location.
 pub mod config;
@@ -26,29 +30,47 @@ pub mod daemon;
 pub mod keyboard;
 /// Converts the key string to the xkb code
 pub mod keycode;
-/// The msgs between the daemon and the cli.
-pub mod msg;
 /// Manages the eww UI
 pub mod ui;
 
 use anyhow::Result;
+use daemon::client;
 use keycode::str_to_key;
-use msg::Msg;
 
-fn main() -> Result<()> {
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
+async fn main() -> Result<()> {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     let args = args.iter().map(String::as_str).collect::<Vec<_>>();
 
     match &args[..] {
-        ["daemon"] => daemon::daemon()?,
-        ["daemon", "stop"] => Msg::Stop.send()?,
-        ["auto", "enable"] => Msg::AutoEnable.send()?,
-        ["auto", "disable"] => Msg::AutoDisable.send()?,
-        ["auto", "toggle"] => Msg::AutoToggle.send()?,
+        ["daemon"] => daemon::daemon().await?,
+        ["daemon", "stop"] => {
+            let _ = client().await?.stop(()).await?;
+        }
+        ["auto", "enable"] => {
+            let _ = client().await?.auto_enable(()).await?;
+        }
+        ["auto", "disable"] => {
+            let _ = client().await?.auto_disable(()).await?;
+        }
+        ["auto", "toggle"] => {
+            let _ = client().await?.auto_toggle(()).await?;
+        }
+        ["auto", "query"] => {
+            let enabled = client().await?.auto_query(()).await?.get_ref().enabled;
+            println!("{enabled}");
+        }
         ["ui", "open"] => ui::open()?,
         ["ui", "close"] => ui::close()?,
         ["ui", "toggle"] => ui::toggle()?,
-        ["key", key_str] => Msg::Key(str_to_key(key_str)?).send()?,
+        ["key", key_str] => {
+            let _ = client()
+                .await?
+                .send_key(daemon::proto::Key {
+                    key: str_to_key(key_str)?,
+                })
+                .await?;
+        }
         _ => anyhow::bail!("Command not recognised"),
     };
 

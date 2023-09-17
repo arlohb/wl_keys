@@ -239,4 +239,10 @@ impl Keyboard {
     pub fn auto_toggle(&mut self) {
         self.state.auto = !self.state.auto;
     }
+
+    /// Get the auto status
+    #[must_use]
+    pub const fn auto_query(&self) -> bool {
+        self.state.auto
+    }
 }

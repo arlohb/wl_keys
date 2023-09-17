@@ -15,6 +15,8 @@
             rust-analyzer
             clippy
             rustfmt
+
+            protobuf
           ];
         };
       }
