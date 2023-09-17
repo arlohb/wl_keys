@@ -102,6 +102,11 @@ static KEYBOARD: Lazy<Arc<RwLock<Keyboard>>> =
 
 /// Run the grpc daemon
 pub async fn daemon() -> Result<()> {
+    // Stop the daemon if its already running
+    if let Ok(mut client) = client().await {
+        let _ = client.stop(()).await;
+    }
+
     let (quit_tx, mut quit_rx) = mpsc::channel::<()>(1);
     let quit_signal = async {
         quit_rx.recv().await;
