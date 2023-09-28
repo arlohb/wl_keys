@@ -1,7 +1,31 @@
+(defpoll
+  MOD_SHIFT
+  :interval "50ms"
+  "/home/arlo/code/wl_keys/target/debug/wl_keys mod query SHIFT")
+
+(defpoll
+  MOD_CTRL
+  :interval "50ms"
+  "/home/arlo/code/wl_keys/target/debug/wl_keys mod query CTRL")
+
+(defpoll
+  MOD_ALT
+  :interval "50ms"
+  "/home/arlo/code/wl_keys/target/debug/wl_keys mod query ALT")
+
+(defpoll
+  MOD_CMD
+  :interval "50ms"
+  "/home/arlo/code/wl_keys/target/debug/wl_keys mod query CMD")
+
 (defwidget key [c ?width ?halign]
   (button
    :class "key"
-   :onclick "/home/arlo/code/wl_keys/target/debug/wl_keys key ${c?.[1] ?: c[0]}"
+   :onclick "/home/arlo/code/wl_keys/target/debug/wl_keys ${
+    matches(c?.[1] ?: c[0], "^(SHIFT|CTRL|ALT|CMD)$") ? "mod toggle" : "key"
+   } ${
+    c?.[1] ?: c[0]
+   }"
    :width { width ?: 100}
    :height 100
    :halign { halign ?: "fill" }
@@ -40,13 +64,14 @@
     :orientation "h"
     :space-evenly true
     :spacing 6
-    (for c in '[["󰘶"], ["z"], ["x"], ["c"], ["v"], ["b"], ["n"], ["m"], ["󰭜", "BACKSPACE"]]'
+    (for c in '[[${ MOD_SHIFT == "true" ? '"󰘲"' : '"󰘶"'}, "SHIFT"], ["z"], ["x"], ["c"], ["v"], ["b"], ["n"], ["m"], ["󰭜", "BACKSPACE"]]'
       (key :c c)))
    (box
     :orientation "h"
     :space-evenly false
     :spacing 6
-    (key :width 200 :c '["󰘳", "SPACE"]')
+    (key :width 100 :c '[${ MOD_CTRL == "true" ? '"_"' : '"󰘴"'}, "CTRL"]')
+    (key :width 100 :c '[${ MOD_CMD == "true" ? '"_"' : '"󰘳"'}, "CMD"]')
     (key :width 100 :c '[","]')
     (key :width 450 :c '["󱁐", "SPACE"]')
     (key :width 100 :c '["."]')

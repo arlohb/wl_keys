@@ -33,6 +33,31 @@ pub enum UiCmd {
     Toggle,
 }
 
+/// The 'mod' subcmd
+#[derive(clap::Subcommand)]
+pub enum ModCmd {
+    /// Press a modifier
+    Press {
+        /// The modifier to press
+        modifier: String,
+    },
+    /// Release a modifier
+    Release {
+        /// The modifier to release
+        modifier: String,
+    },
+    /// Toggle a modifier
+    Toggle {
+        /// The modifier to toggle
+        modifier: String,
+    },
+    /// Query a modifier state
+    Query {
+        /// The modifier to query
+        modifier: String,
+    },
+}
+
 /// The top level args
 #[derive(clap::Parser)]
 #[command(name = "wl_keys")]
@@ -48,6 +73,10 @@ pub enum Command {
     /// Manage the ui
     #[command(subcommand)]
     Ui(UiCmd),
+
+    /// Press and release modifiers
+    #[command(subcommand)]
+    Mod(ModCmd),
 
     /// Press a key
     Key {

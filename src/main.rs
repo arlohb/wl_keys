@@ -35,10 +35,13 @@ pub mod keycode;
 /// Manages the eww UI
 pub mod ui;
 
-use anyhow::Result;
-use args::{AutoCmd, Command, DaemonCmd, UiCmd};
+use anyhow::{Context, Result};
+use args::{AutoCmd, Command, DaemonCmd, ModCmd, UiCmd};
 use clap::Parser;
-use daemon::client;
+use daemon::{
+    client,
+    proto::{ModMsg, Modifier},
+};
 use keycode::str_to_key;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
@@ -77,6 +80,51 @@ async fn main() -> Result<()> {
             UiCmd::Open => ui::open()?,
             UiCmd::Close => ui::close()?,
             UiCmd::Toggle => ui::toggle()?,
+        },
+        Command::Mod(cmd) => match cmd {
+            ModCmd::Press { modifier: mod_str } => {
+                let _ = client()
+                    .await?
+                    .mod_press(ModMsg {
+                        modifier: Modifier::from_str_name(&mod_str)
+                            .context("Invalid modifier")?
+                            .into(),
+                    })
+                    .await?;
+            }
+            ModCmd::Release { modifier: mod_str } => {
+                let _ = client()
+                    .await?
+                    .mod_release(ModMsg {
+                        modifier: Modifier::from_str_name(&mod_str)
+                            .context("Invalid modifier")?
+                            .into(),
+                    })
+                    .await?;
+            }
+            ModCmd::Toggle { modifier: mod_str } => {
+                let _ = client()
+                    .await?
+                    .mod_toggle(ModMsg {
+                        modifier: Modifier::from_str_name(&mod_str)
+                            .context("Invalid modifier")?
+                            .into(),
+                    })
+                    .await?;
+            }
+            ModCmd::Query { modifier: mod_str } => {
+                let pressed = client()
+                    .await?
+                    .mod_query(ModMsg {
+                        modifier: Modifier::from_str_name(&mod_str)
+                            .context("Invalid modifier")?
+                            .into(),
+                    })
+                    .await?
+                    .get_ref()
+                    .pressed;
+                println!("{pressed}");
+            }
         },
         Command::Key { key: key_str } => {
             let _ = client()

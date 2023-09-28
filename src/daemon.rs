@@ -62,6 +62,10 @@ impl Daemon for MyDaemon {
             .key(key, false)
             .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
 
+        self.kb_write()?
+            .mod_release_all()
+            .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
+
         Ok(Response::new(()))
     }
 
@@ -84,6 +88,39 @@ impl Daemon for MyDaemon {
         Ok(Response::new(proto::AutoStatus {
             enabled: self.kb_read()?.auto_query(),
         }))
+    }
+
+    async fn mod_press(&self, req: Request<proto::ModMsg>) -> Result<Response<()>, Status> {
+        let modifier = req.get_ref().modifier();
+        self.kb_write()?
+            .mod_press(modifier)
+            .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
+        Ok(Response::new(()))
+    }
+
+    async fn mod_release(&self, req: Request<proto::ModMsg>) -> Result<Response<()>, Status> {
+        let modifier = req.get_ref().modifier();
+        self.kb_write()?
+            .mod_release(modifier)
+            .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
+        Ok(Response::new(()))
+    }
+
+    async fn mod_toggle(&self, req: Request<proto::ModMsg>) -> Result<Response<()>, Status> {
+        let modifier = req.get_ref().modifier();
+        self.kb_write()?
+            .mod_toggle(modifier)
+            .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
+        Ok(Response::new(()))
+    }
+
+    async fn mod_query(
+        &self,
+        req: Request<proto::ModMsg>,
+    ) -> Result<Response<proto::ModStatus>, Status> {
+        let modifier = req.get_ref().modifier();
+        let pressed = self.kb_read()?.mod_query(modifier);
+        Ok(Response::new(proto::ModStatus { pressed }))
     }
 
     async fn stop(&self, _: Request<()>) -> Result<Response<()>, Status> {

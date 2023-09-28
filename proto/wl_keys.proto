@@ -5,10 +5,17 @@ import "google/protobuf/empty.proto";
 
 service Daemon {
     rpc SendKey (Key) returns (google.protobuf.Empty);
+
     rpc AutoEnable (google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc AutoDisable (google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc AutoToggle (google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc AutoQuery (google.protobuf.Empty) returns (AutoStatus);
+
+    rpc ModPress (ModMsg) returns (google.protobuf.Empty);
+    rpc ModRelease (ModMsg) returns (google.protobuf.Empty);
+    rpc ModToggle (ModMsg) returns (google.protobuf.Empty);
+    rpc ModQuery (ModMsg) returns (ModStatus);
+
     rpc Stop (google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc GetProtocols (google.protobuf.Empty) returns (Protocols);
 }
@@ -19,6 +26,22 @@ message Key {
 
 message AutoStatus {
     bool enabled = 1;
+}
+
+enum Modifier {
+    SHIFT = 0;
+    CTRL = 1;
+    ALT = 2;
+    // super is a keyword in rust
+    CMD = 3;
+}
+
+message ModMsg {
+    Modifier modifier = 1;
+}
+
+message ModStatus {
+    bool pressed = 1;
 }
 
 message Protocols {

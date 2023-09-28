@@ -25,11 +25,24 @@ use wayland_protocols_misc::{
     },
 };
 
+use crate::daemon::proto::Modifier;
+
 /// This is taken from the real `WlKeyboard`,
 /// and passed as the keymap for my virtual keyboard.
 struct Keymap {
     fd: OwnedFd,
     size: u32,
+}
+
+/// Hold the modifier state
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Default)]
+struct ModState {
+    shift: bool,
+    ctrl: bool,
+    alt: bool,
+    // Only calling it this because super is a keyword
+    cmd: bool,
 }
 
 #[derive(Default)]
@@ -38,6 +51,7 @@ struct State {
     keymap: Option<Keymap>,
     // Whether it will automatically open and close
     auto: bool,
+    mods: ModState,
 }
 
 delegate_noop!(State: ignore WlSeat);
@@ -244,6 +258,88 @@ impl Keyboard {
     #[must_use]
     pub const fn auto_query(&self) -> bool {
         self.state.auto
+    }
+
+    fn send_mods(&self) -> Result<()> {
+        const fn bool_mask(b: bool) -> u32 {
+            if b {
+                u32::MAX
+            } else {
+                0
+            }
+        }
+
+        let mods = &self.state.mods;
+
+        let latched = (bool_mask(mods.shift) & 0x01)
+            | (bool_mask(mods.ctrl) & 0x04)
+            | (bool_mask(mods.cmd) & 0x40)
+            | (bool_mask(mods.alt) & 0x08);
+
+        self.keyboard.modifiers(0, latched, 0, 0);
+        self.event_queue.flush()?;
+
+        Ok(())
+    }
+
+    /// Press a modifier
+    pub fn mod_press(&mut self, modifier: Modifier) -> Result<()> {
+        match modifier {
+            Modifier::Shift => self.state.mods.shift = true,
+            Modifier::Ctrl => self.state.mods.ctrl = true,
+            Modifier::Alt => self.state.mods.alt = true,
+            Modifier::Cmd => self.state.mods.cmd = true,
+        }
+
+        self.send_mods()?;
+
+        Ok(())
+    }
+
+    /// Release a modifier
+    pub fn mod_release(&mut self, modifier: Modifier) -> Result<()> {
+        match modifier {
+            Modifier::Shift => self.state.mods.shift = false,
+            Modifier::Ctrl => self.state.mods.ctrl = false,
+            Modifier::Alt => self.state.mods.alt = false,
+            Modifier::Cmd => self.state.mods.cmd = false,
+        }
+
+        self.send_mods()?;
+
+        Ok(())
+    }
+
+    /// Toggle a modifier
+    pub fn mod_toggle(&mut self, modifier: Modifier) -> Result<()> {
+        match modifier {
+            Modifier::Shift => self.state.mods.shift = !self.state.mods.shift,
+            Modifier::Ctrl => self.state.mods.ctrl = !self.state.mods.ctrl,
+            Modifier::Alt => self.state.mods.alt = !self.state.mods.alt,
+            Modifier::Cmd => self.state.mods.cmd = !self.state.mods.cmd,
+        }
+
+        self.send_mods()?;
+
+        Ok(())
+    }
+
+    /// Get the modifier state
+    #[must_use]
+    pub const fn mod_query(&self, modifier: Modifier) -> bool {
+        match modifier {
+            Modifier::Shift => self.state.mods.shift,
+            Modifier::Ctrl => self.state.mods.ctrl,
+            Modifier::Alt => self.state.mods.alt,
+            Modifier::Cmd => self.state.mods.cmd,
+        }
+    }
+
+    /// Release all of the modifiers
+    pub fn mod_release_all(&mut self) -> Result<()> {
+        self.state.mods = ModState::default();
+        self.send_mods()?;
+        Ok(())
     }
 
     /// Get a list of protocols supported
