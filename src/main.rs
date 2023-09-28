@@ -51,6 +51,12 @@ async fn main() -> Result<()> {
             DaemonCmd::Stop => {
                 let _ = client().await?.stop(()).await?;
             }
+            DaemonCmd::Protocols => {
+                let protocols = client().await?.get_protocols(()).await?;
+                for protocol in &protocols.get_ref().protocols {
+                    println!("{protocol}");
+                }
+            }
         },
         Command::Auto(cmd) => match cmd {
             AutoCmd::Enable => {

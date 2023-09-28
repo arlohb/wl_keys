@@ -245,4 +245,10 @@ impl Keyboard {
     pub const fn auto_query(&self) -> bool {
         self.state.auto
     }
+
+    /// Get a list of protocols supported
+    #[must_use]
+    pub fn protocols(&self) -> Vec<String> {
+        self.state.globals.keys().cloned().collect()
+    }
 }

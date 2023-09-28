@@ -5,6 +5,8 @@ pub enum DaemonCmd {
     Start,
     /// Stop the daemon if it's currently running
     Stop,
+    /// List the protocols supported by the wm
+    Protocols,
 }
 
 /// The 'auto' subcmd

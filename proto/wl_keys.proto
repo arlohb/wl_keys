@@ -10,6 +10,7 @@ service Daemon {
     rpc AutoToggle (google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc AutoQuery (google.protobuf.Empty) returns (AutoStatus);
     rpc Stop (google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc GetProtocols (google.protobuf.Empty) returns (Protocols);
 }
 
 message Key {
@@ -18,5 +19,9 @@ message Key {
 
 message AutoStatus {
     bool enabled = 1;
+}
+
+message Protocols {
+    repeated string protocols = 1;
 }
 

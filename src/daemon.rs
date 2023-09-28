@@ -93,6 +93,12 @@ impl Daemon for MyDaemon {
             .map_err(|_| Status::new(Code::Internal, "Quit signal closed"))?;
         Ok(Response::new(()))
     }
+
+    async fn get_protocols(&self, _: Request<()>) -> Result<Response<proto::Protocols>, Status> {
+        Ok(Response::new(proto::Protocols {
+            protocols: self.kb_read()?.protocols(),
+        }))
+    }
 }
 
 // No other way in a static
