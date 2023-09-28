@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
         Command::Daemon(cmd) => match cmd {
             DaemonCmd::Start => daemon::daemon().await?,
             DaemonCmd::Stop => {
-                let _ = client().await?.stop(()).await?;
+                client().await?.stop(()).await?;
             }
             DaemonCmd::Protocols => {
                 let protocols = client().await?.get_protocols(()).await?;
@@ -63,13 +63,13 @@ async fn main() -> Result<()> {
         },
         Command::Auto(cmd) => match cmd {
             AutoCmd::Enable => {
-                let _ = client().await?.auto_enable(()).await?;
+                client().await?.auto_enable(()).await?;
             }
             AutoCmd::Disable => {
-                let _ = client().await?.auto_disable(()).await?;
+                client().await?.auto_disable(()).await?;
             }
             AutoCmd::Toggle => {
-                let _ = client().await?.auto_toggle(()).await?;
+                client().await?.auto_toggle(()).await?;
             }
             AutoCmd::Query => {
                 let enabled = client().await?.auto_query(()).await?.get_ref().enabled;
@@ -83,7 +83,7 @@ async fn main() -> Result<()> {
         },
         Command::Mod(cmd) => match cmd {
             ModCmd::Press { modifier: mod_str } => {
-                let _ = client()
+                client()
                     .await?
                     .mod_press(ModMsg {
                         modifier: Modifier::from_str_name(&mod_str)
@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
                     .await?;
             }
             ModCmd::Release { modifier: mod_str } => {
-                let _ = client()
+                client()
                     .await?
                     .mod_release(ModMsg {
                         modifier: Modifier::from_str_name(&mod_str)
@@ -103,7 +103,7 @@ async fn main() -> Result<()> {
                     .await?;
             }
             ModCmd::Toggle { modifier: mod_str } => {
-                let _ = client()
+                client()
                     .await?
                     .mod_toggle(ModMsg {
                         modifier: Modifier::from_str_name(&mod_str)
@@ -127,7 +127,7 @@ async fn main() -> Result<()> {
             }
         },
         Command::Key { key: key_str } => {
-            let _ = client()
+            client()
                 .await?
                 .send_key(daemon::proto::Key {
                     key: str_to_key(&key_str)?,
