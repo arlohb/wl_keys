@@ -32,7 +32,6 @@ enum Modifier {
     SHIFT = 0;
     CTRL = 1;
     ALT = 2;
-    // super is a keyword in rust
     CMD = 3;
 }
 

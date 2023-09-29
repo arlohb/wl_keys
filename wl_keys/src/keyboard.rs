@@ -35,19 +35,43 @@ struct Keymap {
 }
 
 /// Hold the modifier state
+// This is not a state machine
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Default)]
 struct ModState {
     shift: bool,
     ctrl: bool,
     alt: bool,
-    // Only calling it this because super is a keyword
     cmd: bool,
+}
+
+impl ModState {
+    pub fn to_bitflags(&self) -> u32 {
+        fn bool_mask(b: bool) -> u32 {
+            u32::MAX * u32::from(b)
+        }
+
+        // These values are set by the keymap,
+        // so I found these out with 'wev' on my real kbd
+        (bool_mask(self.shift) & 0x01)
+            | (bool_mask(self.ctrl) & 0x04)
+            | (bool_mask(self.cmd) & 0x40)
+            | (bool_mask(self.alt) & 0x08)
+    }
+}
+
+struct Global {
+    /// The name of the object
+    /// Really this is more of an id,
+    /// but I'll keep consistency with wayland
+    name: u32,
+    /// The version of the implemented protocol
+    version: u32,
 }
 
 #[derive(Default)]
 struct State {
-    globals: HashMap<String, (u32, u32)>,
+    globals: HashMap<String, Global>,
     keymap: Option<Keymap>,
     // Whether it will automatically open and close
     auto: bool,
@@ -117,7 +141,7 @@ impl Dispatch<WlRegistry, ()> for State {
             version,
         } = event
         {
-            state.globals.insert(interface, (name, version));
+            state.globals.insert(interface, Global { name, version });
         }
     }
 }
@@ -132,20 +156,21 @@ impl State {
         Self: Dispatch<T, ()>,
     {
         let interface = T::interface();
-        let &(id, version) = self
+        let global = self
             .globals
             .get(interface.name)
             .context(format!("{interface} not found"))?;
 
-        if interface.version < version {
+        if global.version > interface.version {
             bail!(
-                "{} v{version} exceeds the max supported version (v{})",
+                "{} v{} exceeds the max supported version (v{})",
                 interface.name,
+                global.version,
                 interface.version
             );
         }
 
-        Ok(registry.bind::<T, _, _>(id, version, qh, ()))
+        Ok(registry.bind::<T, _, _>(global.name, global.version, qh, ()))
     }
 }
 
@@ -261,20 +286,7 @@ impl Keyboard {
     }
 
     fn send_mods(&self) -> Result<()> {
-        const fn bool_mask(b: bool) -> u32 {
-            if b {
-                u32::MAX
-            } else {
-                0
-            }
-        }
-
-        let mods = &self.state.mods;
-
-        let latched = (bool_mask(mods.shift) & 0x01)
-            | (bool_mask(mods.ctrl) & 0x04)
-            | (bool_mask(mods.cmd) & 0x40)
-            | (bool_mask(mods.alt) & 0x08);
+        let latched = self.state.mods.to_bitflags();
 
         self.keyboard.modifiers(0, latched, 0, 0);
         self.event_queue.flush()?;

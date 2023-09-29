@@ -20,6 +20,32 @@ use crate::{
     },
 };
 
+/// This allows me to use:
+/// `.internal("Wayland request failed")`
+/// on a `Result` instead of
+/// `.map_err(|_| Status::new(Code::Internal, "Wayland request failed"))`
+trait InternalError<T> {
+    /// Map the error to a `Status` with a `Code::Internal` and given msg.
+    fn internal(self, msg: impl Into<String>) -> Result<T, Status>;
+}
+
+impl<T, E> InternalError<T> for Result<T, E> {
+    fn internal(self, msg: impl Into<String>) -> Result<T, Status> {
+        self.map_err(|_| Status::new(Code::Internal, msg))
+    }
+}
+
+trait ToResponse {
+    fn to_res(self) -> Response<Self>
+    where
+        Self: Sized,
+    {
+        Response::new(self)
+    }
+}
+
+impl<T> ToResponse for T {}
+
 /// The implementation of the Daemon grpc trait
 pub struct MyDaemon {
     keyboard: Arc<RwLock<Keyboard>>,
@@ -33,15 +59,11 @@ impl MyDaemon {
     }
 
     fn kb_read(&self) -> Result<RwLockReadGuard<Keyboard>, Status> {
-        self.keyboard
-            .read()
-            .map_err(|_| Status::new(Code::Internal, "RwLock poisoned"))
+        self.keyboard.read().internal("RwLock poisoned")
     }
 
     fn kb_write(&self) -> Result<RwLockWriteGuard<Keyboard>, Status> {
-        self.keyboard
-            .write()
-            .map_err(|_| Status::new(Code::Internal, "RwLock poisoned"))
+        self.keyboard.write().internal("RwLock poisoned")
     }
 }
 
@@ -52,64 +74,65 @@ impl Daemon for MyDaemon {
 
         self.kb_read()?
             .key(key, true)
-            .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
+            .internal("Wayland request failed")?;
 
         tokio::time::sleep(Duration::from_millis(10)).await;
 
         self.kb_read()?
             .key(key, false)
-            .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
+            .internal("Wayland request failed")?;
 
         self.kb_write()?
             .mod_release_all()
-            .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
+            .internal("Wayland request failed")?;
 
-        Ok(Response::new(()))
+        Ok(().to_res())
     }
 
     async fn auto_enable(&self, _: Request<()>) -> Result<Response<()>, Status> {
         self.kb_write()?.auto_enable();
-        Ok(Response::new(()))
+        Ok(().to_res())
     }
 
     async fn auto_disable(&self, _: Request<()>) -> Result<Response<()>, Status> {
         self.kb_write()?.auto_disable();
-        Ok(Response::new(()))
+        Ok(().to_res())
     }
 
     async fn auto_toggle(&self, _: Request<()>) -> Result<Response<()>, Status> {
         self.kb_write()?.auto_toggle();
-        Ok(Response::new(()))
+        Ok(().to_res())
     }
 
     async fn auto_query(&self, _: Request<()>) -> Result<Response<proto::AutoStatus>, Status> {
-        Ok(Response::new(proto::AutoStatus {
+        Ok(proto::AutoStatus {
             enabled: self.kb_read()?.auto_query(),
-        }))
+        }
+        .to_res())
     }
 
     async fn mod_press(&self, req: Request<proto::ModMsg>) -> Result<Response<()>, Status> {
         let modifier = req.get_ref().modifier();
         self.kb_write()?
             .mod_press(modifier)
-            .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
-        Ok(Response::new(()))
+            .internal("Wayland request failed")?;
+        Ok(().to_res())
     }
 
     async fn mod_release(&self, req: Request<proto::ModMsg>) -> Result<Response<()>, Status> {
         let modifier = req.get_ref().modifier();
         self.kb_write()?
             .mod_release(modifier)
-            .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
-        Ok(Response::new(()))
+            .internal("Wayland request failed")?;
+        Ok(().to_res())
     }
 
     async fn mod_toggle(&self, req: Request<proto::ModMsg>) -> Result<Response<()>, Status> {
         let modifier = req.get_ref().modifier();
         self.kb_write()?
             .mod_toggle(modifier)
-            .map_err(|_| Status::new(Code::Internal, "Wayland request failed"))?;
-        Ok(Response::new(()))
+            .internal("Wayland request failed")?;
+        Ok(().to_res())
     }
 
     async fn mod_query(
@@ -118,21 +141,19 @@ impl Daemon for MyDaemon {
     ) -> Result<Response<proto::ModStatus>, Status> {
         let modifier = req.get_ref().modifier();
         let pressed = self.kb_read()?.mod_query(modifier);
-        Ok(Response::new(proto::ModStatus { pressed }))
+        Ok(proto::ModStatus { pressed }.to_res())
     }
 
     async fn stop(&self, _: Request<()>) -> Result<Response<()>, Status> {
-        self.quit_tx
-            .send(())
-            .await
-            .map_err(|_| Status::new(Code::Internal, "Quit signal closed"))?;
-        Ok(Response::new(()))
+        self.quit_tx.send(()).await.internal("Quit signal closed")?;
+        Ok(().to_res())
     }
 
     async fn get_protocols(&self, _: Request<()>) -> Result<Response<proto::Protocols>, Status> {
-        Ok(Response::new(proto::Protocols {
+        Ok(proto::Protocols {
             protocols: self.kb_read()?.protocols(),
-        }))
+        }
+        .to_res())
     }
 }
 
@@ -153,8 +174,7 @@ pub async fn daemon() -> Result<()> {
         quit_rx.recv().await;
     };
 
-    // This result needs to be explicitly typed
-    let _x: tokio::task::JoinHandle<Result<()>> = tokio::spawn(async {
+    tokio::spawn(async {
         loop {
             tokio::time::sleep(Duration::from_millis(15)).await;
 
@@ -165,6 +185,10 @@ pub async fn daemon() -> Result<()> {
                 .context("RwLock poisoned")?
                 .roundtrip()?;
         }
+
+        // This avoids having to explicitely type the return value
+        #[allow(unreachable_code)]
+        Result::<()>::Ok(())
     });
 
     Server::builder()
@@ -177,5 +201,6 @@ pub async fn daemon() -> Result<()> {
 
 /// Get a grpc client
 pub async fn client() -> Result<DaemonClient<Channel>> {
-    Ok(DaemonClient::connect(format!("https://{}", config::ADDRESS)).await?)
+    let addr = format!("https://{}", config::ADDRESS);
+    DaemonClient::connect(addr).await.map_err(Into::into)
 }
