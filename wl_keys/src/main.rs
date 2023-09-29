@@ -38,11 +38,10 @@ pub mod ui;
 use anyhow::{Context, Result};
 use args::{AutoCmd, Command, DaemonCmd, ModCmd, UiCmd};
 use clap::Parser;
-use daemon::{
-    client,
-    proto::{ModMsg, Modifier},
-};
+use daemon::client;
 use keycode::str_to_key;
+use proto::{ModMsg, Modifier};
+pub use wl_keys_proto as proto;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> Result<()> {
@@ -129,7 +128,7 @@ async fn main() -> Result<()> {
         Command::Key { key: key_str } => {
             client()
                 .await?
-                .send_key(daemon::proto::Key {
+                .send_key(proto::Key {
                     key: str_to_key(&key_str)?,
                 })
                 .await?;

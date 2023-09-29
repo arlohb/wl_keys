@@ -10,17 +10,15 @@ use tonic::{
     Code, Request, Response, Status,
 };
 
-use crate::{config, keyboard::Keyboard};
-
-use self::proto::{
-    daemon_client::DaemonClient,
-    daemon_server::{Daemon, DaemonServer},
+use crate::{
+    config,
+    keyboard::Keyboard,
+    proto::{
+        self,
+        daemon_client::DaemonClient,
+        daemon_server::{Daemon, DaemonServer},
+    },
 };
-
-/// The grpc API
-pub mod proto {
-    tonic::include_proto!("wl_keys");
-}
 
 /// The implementation of the Daemon grpc trait
 pub struct MyDaemon {

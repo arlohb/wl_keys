@@ -1402,7 +1402,17 @@ dependencies = [
  "prost",
  "tokio",
  "tonic",
- "tonic-build",
  "wayland-client",
  "wayland-protocols-misc",
+ "wl_keys_proto",
+]
+
+[[package]]
+name = "wl_keys_proto"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "prost",
+ "tonic",
+ "tonic-build",
 ]

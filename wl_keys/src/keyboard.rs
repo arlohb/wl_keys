@@ -25,7 +25,7 @@ use wayland_protocols_misc::{
     },
 };
 
-use crate::daemon::proto::Modifier;
+use crate::proto::Modifier;
 
 /// This is taken from the real `WlKeyboard`,
 /// and passed as the keymap for my virtual keyboard.

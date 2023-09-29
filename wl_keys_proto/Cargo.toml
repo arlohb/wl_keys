@@ -1,0 +1,16 @@
+[package]
+name = "wl_keys_proto"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tonic = "0.10"
+# This is not directly used, but required either way
+prost = "0.12"
+
+[build-dependencies]
+anyhow = "1.0"
+tonic-build = "0.10"
+
